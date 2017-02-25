@@ -1,10 +1,7 @@
 (ns poe-gearsolve-clj.core
   (:require [clj-http.client :as client]))
 
-(defn foo
-  "I don't do a whole lot."
-  [x]
-  (println x "Hello, World!   "))
+(defn POESESSID-fn [] (read-string (slurp ".POESSID")))
 
 (defn get-tab-data [accountName POESESSID league tabIndex]
   (:body (client/get
@@ -32,9 +29,15 @@
 
   (def all-tabs-data (get-all-tabs
                        "LudoTheHUN"   ;;you account name
-                       ""   ;;POESESSID, get it from your browser cookies , a 32 char string
+                       (POESESSID-fn)   ;;POESESSID, get it from your browser cookies , a 32 char string
                        "Breach"
                        ))
+
+
+  (defn item-classifier  [item]
+
+
+    )
 
 
   (count all-tabs-data)
