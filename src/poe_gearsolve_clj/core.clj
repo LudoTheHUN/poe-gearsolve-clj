@@ -52,28 +52,53 @@
 (defn filter-items-of-kind [tabs-data kind]
   (filter (fn [i] (= (item->kind i) kind)) tabs-data))
 
-(defn mod-string->mod-kv [mod]
+(defn mod-string->mod-kv [a-mod]
+  (let [str-get (fn [s] (re-find #"[^0-9]+$" a-mod))
+        int-get (fn [s] (Integer. (re-find #"[^+][0-9]*" a-mod)))]
+    {(cond
+       (= (str-get a-mod) "% increased Stun Duration on Enemies")
+       :StunDurationPct
 
+       (= (str-get a-mod) " to Strength")
+       :Strength
 
-  "24% increased Stun Duration on Enemies"
+       (= (str-get a-mod) " to Armour")
+       :Armour
 
-  )
+       (= (str-get a-mod) " to maximum Energy Shield")
+       :EnergyShield
+
+       ;;TODO need to differenciate between the total Energy Shield of item and it's mods
+
+       :else :UNKNOWN-MOD
+       )
+     (int-get a-mod)
+     }
+    ))
 
 ;(mod-string->mod-kv "24% increased Stun Duration on Enemies")
+;;  {:StunDurationPct 24}
+
 
 (defn item->modsmap  [item]
   (let [all-mod-strings (concat
                           (:implicitMods item)
                           (:explicitMods item))
         ]
-    (reduce (fn [xs x]
-             (conj xs {}) )
+
+    ;;TODO need to look at item kinds an either use the mods (for belts rings amulets) or item properties
+
+    (reduce (fn [mod-map a-mod]
+             (conj mod-map (mod-string->mod-kv a-mod)) )
             {} all-mod-strings)
     ))
 
-#_(item->modsmap
-    (first (filter-items-of-kind all-tabs-data :Belt))
-    )
+;;Need another function for properties
+
+(item->modsmap
+  (first (filter-items-of-kind all-tabs-data :Glove)))
+(item->modsmap
+  (first (filter-items-of-kind all-tabs-data :Belt)))
 
 
 (defn find-armout-sets [all-tabs-data armout-set-when-fn]
