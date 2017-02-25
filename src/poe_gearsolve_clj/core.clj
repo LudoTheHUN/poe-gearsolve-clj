@@ -4,7 +4,7 @@
 (defn foo
   "I don't do a whole lot."
   [x]
-  (println x "Hello, World! "))
+  (println x "Hello, World!  "))
 
 (defn get-tab-data [accountName POESESSID league tabIndex]
   (:body (client/get
