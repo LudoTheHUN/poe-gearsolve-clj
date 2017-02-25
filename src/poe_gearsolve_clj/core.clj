@@ -20,8 +20,79 @@
         flat-all-tabs-data (reduce (fn [xs x]
                                      (concat xs (map #(conj % {:tab-number (:tab-number x)}) (:items x)))
                                      ) [] all-tabs-data)]
-    flat-all-tabs-data
+    flat-all-tabs-data))
+
+(defn item->kind  [item]
+  (let [http-split (clojure.string/split (:icon item) #"/")]
+    (cond
+      (= (nth http-split 6 nil) "Amulets")  :Amulet
+      (= (nth http-split 6 nil) "Belts")    :Belt
+      (= (nth http-split 6 nil) "Gems")     :Gem
+      (= (nth http-split 6 nil) "Maps")     :Map
+      (= (nth http-split 6 nil) "Jewels")   :Jewel
+      (= (nth http-split 6 nil) "Currency") :Currency
+      (= (nth http-split 6 nil) "ZWFndWVJZCI7TzoxODoi") :Flask
+      (= (nth http-split 6 nil) "Divination") :Divination-card
+      (= (nth http-split 6 nil) "Rings")      :Ring
+      (= (nth http-split 6 nil) "Quivers")    :Quiver
+
+      (= (nth http-split 7 nil) "TwoHandWeapons") :TwoHandedWeapon
+      (= (nth http-split 7 nil) "OneHandWeapons") :OneHandWeapon
+      (= (nth http-split 7 nil) "Helmets")         :Helmet
+      (= (nth http-split 7 nil) "Boots")           :Boot
+      (= (nth http-split 7 nil) "Gloves")          :Glove
+      (= (nth http-split 7 nil) "BodyArmours")     :BodyArmour
+      (= (nth http-split 7 nil) "Shields")         :Shield
+      :else :UNKNOWN
+      )))
+
+(def armour-set-kinds #{:Amulet :Ring :Helmet :BodyArmour :Belt :Glove :Boot})
+
+
+(defn filter-items-of-kind [tabs-data kind]
+  (filter (fn [i] (= (item->kind i) kind)) tabs-data))
+
+(defn mod-string->mod-kv [mod]
+
+
+  "24% increased Stun Duration on Enemies"
+
+  )
+
+;(mod-string->mod-kv "24% increased Stun Duration on Enemies")
+
+(defn item->modsmap  [item]
+  (let [all-mod-strings (concat
+                          (:implicitMods item)
+                          (:explicitMods item))
+        ]
+    (reduce (fn [xs x]
+             (conj xs {}) )
+            {} all-mod-strings)
     ))
+
+#_(item->modsmap
+    (first (filter-items-of-kind all-tabs-data :Belt))
+    )
+
+
+(defn find-armout-sets [all-tabs-data armout-set-when-fn]
+  (take 100
+        (for [Amulet (filter-items-of-kind all-tabs-data :Amulet)
+              Ring1 (filter-items-of-kind all-tabs-data :Ring)
+              Ring2 (filter-items-of-kind all-tabs-data :Ring)
+              Helmet (filter-items-of-kind all-tabs-data :Helmet)
+              BodyArmour (filter-items-of-kind all-tabs-data :BodyArmour)
+              Belt (filter-items-of-kind all-tabs-data :Belt)
+              Glove (filter-items-of-kind all-tabs-data :Glove)
+              Boot (filter-items-of-kind all-tabs-data :Boot)
+              ]
+          {:Amulet Amulet :Ring1 Ring1 :Ring2 Ring2}
+          )))
+
+
+
+
 
 (comment
   ;(def tab-data-0 (get-tab-data "LudoTheHUN" "" "Breach" 0))
@@ -34,22 +105,38 @@
                        ))
 
 
-  (defn item-classifier  [item]
+  (filter-items-of-kind all-tabs-data :Belt)
 
+
+ (count (find-armout-sets all-tabs-data identity))
+
+
+   (frequencies (filter armour-set-classes (map item->kind all-tabs-data)
+                 ))
+
+
+    (filter (fn [i] (= (item-classifier i) "Divination"))
+                   all-tabs-data)
+
+
+    (map :properties all-tabs-data)
+
+
+    (clojure.pprint/pprint (take 10  all-tabs-data))
+
+
+
+
+    (count all-tabs-data)
+
+    (keys tab-data)
+
+    (frequencies  (map :properties all-tabs-data
+                       ))
+
+    ;; TODO unify item types
+    ;; TODO unify item stats
+    ;; TODO Encode constraints of a gear-set.
+    ;; TODO: constraint optimiser for minimal resistances and shield... points based gear-set search
 
     )
-
-
-  (count all-tabs-data)
-
-  (keys tab-data)
-
-  (frequencies  (map :properties all-tabs-data
-       ))
-
-  ;; TODO unify item types
-  ;; TODO unify item stats
-  ;; TODO Encode constraints of a gear-set.
-  ;; TODO: constraint optimiser for minimal resistances and shield... points based gear-set search
-
-  )
