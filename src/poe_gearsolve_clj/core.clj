@@ -95,11 +95,12 @@
 
 ;;Need another function for properties
 
-(item->modsmap
-  (first (filter-items-of-kind all-tabs-data :Glove)))
-(item->modsmap
-  (first (filter-items-of-kind all-tabs-data :Belt)))
-
+(comment
+  (item->modsmap
+    (first (filter-items-of-kind all-tabs-data :Glove)))
+  (item->modsmap
+    (first (filter-items-of-kind all-tabs-data :Belt)))
+  )
 
 (defn find-armout-sets [all-tabs-data armout-set-when-fn]
   (take 100
@@ -112,7 +113,9 @@
               Glove (filter-items-of-kind all-tabs-data :Glove)
               Boot (filter-items-of-kind all-tabs-data :Boot)
               ]
-          {:Amulet Amulet :Ring1 Ring1 :Ring2 Ring2}
+          {:armout-set
+           {:Amulet Amulet
+            :Ring1 Ring1 :Ring2 Ring2}}
           )))
 
 
