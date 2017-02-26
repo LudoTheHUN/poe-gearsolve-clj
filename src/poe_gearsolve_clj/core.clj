@@ -53,16 +53,30 @@
 (re-find #"([-]?[0-9]*)[\.]?[0-9]" "-234.3 sdsd")
 (re-find #"([-]?[0-9]*)[\.]?[0-9]" "25% increased Stun and Block Recovery")
 (Float. "34")
+(re-matches #"\b([0-9].*)\b" "Adds 4 to 8 Fire Damage to Attacks")
+
+
+(defn get-numbers [s]
+  (let [matcher (re-matcher #"[-]?[0-9]*[\.]?[0-9]" s)]
+    [(re-find matcher) (re-find matcher)]))
+
+#_(get-numbers "Adds d-4.8% to 8.1 Fire 56 Damage to Attacks")
+
+(let [a-mod "Adds d-4.8% to 8.1 Fire Damage to Attacks"]
+(re-find #"[^0-9]+$" a-mod))
+
+;;Pre word
+(let [a-mod "sdfsdf 4.8% to 8.1 Fire Damage to Attacks"]
+  (re-find #"^(.*?)[0-9]" a-mod))
+
 
 (defn filter-items-of-kind [tabs-data kind]
   (filter (fn [i] (= (item->kind i) kind)) tabs-data))
 
 (defn mod-string->mod-kv [a-mod]
   (let [str-get (fn [s] (re-find #"[^0-9]+$" a-mod))
-        int-get (fn [s]   (try (Float. (first (re-find #"([-]?[0-9]*)[\.]?[0-9]" a-mod)))
-                            (catch Exception e :F-ERROR))
-                  )
-
+        int-get (fn [s]   (try (Float. (first (get-numbers a-mod)))
+                            (catch Exception e :F-ERROR)))
         mod-k (cond
                 (= (str-get a-mod) "% increased Stun Duration on Enemies")
                 :StunDurationPct
