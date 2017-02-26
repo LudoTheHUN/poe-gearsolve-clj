@@ -49,30 +49,44 @@
 (def armour-set-kinds #{:Amulet :Ring :Helmet :BodyArmour :Belt :Glove :Boot})
 
 
+
+(re-find #"([-]?[0-9]*)[\.]?[0-9]" "-234.3 sdsd")
+(re-find #"([-]?[0-9]*)[\.]?[0-9]" "25% increased Stun and Block Recovery")
+(Float. "34")
+
 (defn filter-items-of-kind [tabs-data kind]
   (filter (fn [i] (= (item->kind i) kind)) tabs-data))
 
 (defn mod-string->mod-kv [a-mod]
   (let [str-get (fn [s] (re-find #"[^0-9]+$" a-mod))
-        int-get (fn [s] (Integer. (re-find #"[^+][0-9]*" a-mod)))]
-    {(cond
-       (= (str-get a-mod) "% increased Stun Duration on Enemies")
-       :StunDurationPct
+        int-get (fn [s]   (try (Float. (first (re-find #"([-]?[0-9]*)[\.]?[0-9]" a-mod)))
+                            (catch Exception e :F-ERROR))
+                  )
 
-       (= (str-get a-mod) " to Strength")
-       :Strength
+        mod-k (cond
+                (= (str-get a-mod) "% increased Stun Duration on Enemies")
+                :StunDurationPct
 
-       (= (str-get a-mod) " to Armour")
-       :Armour
+                (= (str-get a-mod) " to Strength")
+                :Strength
 
-       (= (str-get a-mod) " to maximum Energy Shield")
-       :EnergyShield
+                (= (str-get a-mod) " to Armour")
+                :Armour
 
-       ;;TODO need to differenciate between the total Energy Shield of item and it's mods
+                (= (str-get a-mod) " to maximum Energy Shield")
+                :EnergyShield
 
-       :else :UNKNOWN-MOD
-       )
-     (int-get a-mod)
+                ;;TODO need to differenciate between the total Energy Shield of item and it's mods
+
+                :else a-mod
+                )
+        mod-v (if (keyword? mod-k) (int-get a-mod)
+                [(str-get a-mod)
+                 (int-get int-get)
+                 ])
+        ]
+    {mod-k
+     mod-v
      }
     ))
 
@@ -134,6 +148,12 @@
 
 
   (filter-items-of-kind all-tabs-data :Belt)
+  (filter-items-of-kind all-tabs-data :Glove)
+  (last (filter-items-of-kind all-tabs-data :Glove))
+
+  (clojure.pprint/pprint
+    (map item->modsmap
+         (filter-items-of-kind all-tabs-data :Glove)))
 
 
  (count (find-armout-sets all-tabs-data identity))
