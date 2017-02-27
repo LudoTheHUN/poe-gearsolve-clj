@@ -57,48 +57,70 @@
 
 
 (defn get-numbers [s]
-  (let [matcher (re-matcher #"[-]?[0-9]*[\.]?[0-9]" s)]
-    [(re-find matcher) (re-find matcher)]))
+  (let [matcher (re-matcher #"[-]?[0-9]*[\.]?[0-9]" s)
+        to-float (fn [s-num] (try (Float. s-num) (catch Exception e nil)))
+        ]
+    [(to-float (re-find matcher))
+     (to-float (re-find matcher))
+     ]))
 
-#_(get-numbers "Adds d-4.8% to 8.1 Fire 56 Damage to Attacks")
+#_(get-numbers "Adds d-4.8% to -8.1 Fire Damage to Attacks")
+#_(get-numbers "Adds Fire Damage to Attacks")
 
-(let [a-mod "Adds d-4.8% to 8.1 Fire Damage to Attacks"]
-(re-find #"[^0-9]+$" a-mod))
 
-;;Pre word
-(let [a-mod "sdfsdf 4.8% to 8.1 Fire Damage to Attacks"]
-  (re-find #"^(.*?)[0-9]" a-mod))
+(defn get-post-num-s [s]
+  (re-find #"[^0-9]+$" s))
+
+#_(get-post-num-s "Adds d-4.8% to 8.1 Fire Damage to Attacks")
+#_(get-post-num-s "Adds d- Fire Damage to Attacks")
+
+
+(defn get-pre-num-s [s]
+  (let [match (re-find #"^(.*?)[0-9]" s)]
+    (if match (second match) match)))
+
+#_(get-pre-num-s "sdfsdf 4.8% to 8.1 Fire Damage to Attacks")
+#_(get-pre-num-s "sdfsdf Fire Damage to Attacks")
 
 
 (defn filter-items-of-kind [tabs-data kind]
   (filter (fn [i] (= (item->kind i) kind)) tabs-data))
 
 (defn mod-string->mod-kv [a-mod]
-  (let [str-get (fn [s] (re-find #"[^0-9]+$" a-mod))
-        int-get (fn [s]   (try (Float. (first (get-numbers a-mod)))
-                            (catch Exception e :F-ERROR)))
-        mod-k (cond
-                (= (str-get a-mod) "% increased Stun Duration on Enemies")
-                :StunDurationPct
+  (let [mod-k (cond
 
-                (= (str-get a-mod) " to Strength")
+                (= (get-post-num-s a-mod) " to Strength")
                 :Strength
+                (= (get-post-num-s a-mod) " to Intelligence")
+                :Intelligence
+                (= (get-post-num-s a-mod) " to Dexterity")
+                :Dexterity
 
-                (= (str-get a-mod) " to Armour")
+                (= (get-post-num-s a-mod) " to Armour")
                 :Armour
-
-                (= (str-get a-mod) " to maximum Energy Shield")
+                (= (get-post-num-s a-mod) " to maximum Energy Shield")
                 :EnergyShield
+                (= (get-post-num-s a-mod) " to Evasion Rating")
+                :EvasionRating
 
                 ;;TODO need to differenciate between the total Energy Shield of item and it's mods
 
-                :else a-mod
+                :else (get-post-num-s a-mod)
                 )
-        mod-v (if (keyword? mod-k) (int-get a-mod)
-                [(str-get a-mod)
-                 (int-get int-get)
-                 ])
+        mod-v ;(if (keyword? mod-k) [(first (get-numbers a-mod)) (second (get-numbers a-mod))]
+                [(first (get-numbers a-mod))
+                 (second (get-numbers a-mod))
+                 (get-pre-num-s a-mod)
+                 (get-post-num-s a-mod)
+                 ]
+               ;)
         ]
+    ;;TODO
+    ;" to all Attributes"
+    ;" to Strength and Dexterity"
+    ;" to Dexterity and Intelligence"
+    ;" to all Attributes"
+    ;and all those things....
     {mod-k
      mod-v
      }
@@ -132,14 +154,14 @@
 
 (defn find-armout-sets [all-tabs-data armout-set-when-fn]
   (take 100
-        (for [Amulet (filter-items-of-kind all-tabs-data :Amulet)
-              Ring1 (filter-items-of-kind all-tabs-data :Ring)
-              Ring2 (filter-items-of-kind all-tabs-data :Ring)
-              Helmet (filter-items-of-kind all-tabs-data :Helmet)
+        (for [Amulet     (filter-items-of-kind all-tabs-data :Amulet)
+              Ring1      (filter-items-of-kind all-tabs-data :Ring)
+              Ring2      (filter-items-of-kind all-tabs-data :Ring)
+              Helmet     (filter-items-of-kind all-tabs-data :Helmet)
               BodyArmour (filter-items-of-kind all-tabs-data :BodyArmour)
-              Belt (filter-items-of-kind all-tabs-data :Belt)
-              Glove (filter-items-of-kind all-tabs-data :Glove)
-              Boot (filter-items-of-kind all-tabs-data :Boot)
+              Belt       (filter-items-of-kind all-tabs-data :Belt)
+              Glove      (filter-items-of-kind all-tabs-data :Glove)
+              Boot       (filter-items-of-kind all-tabs-data :Boot)
               ]
           {:armout-set
            {:Amulet Amulet
@@ -160,14 +182,13 @@
                        "Breach"
                        ))
 
-
   (filter-items-of-kind all-tabs-data :Belt)
   (filter-items-of-kind all-tabs-data :Glove)
   (last (filter-items-of-kind all-tabs-data :Glove))
 
   (clojure.pprint/pprint
     (map item->modsmap
-         (filter-items-of-kind all-tabs-data :Glove)))
+         (filter-items-of-kind all-tabs-data :Boot)))
 
 
  (count (find-armout-sets all-tabs-data identity))
