@@ -8,10 +8,42 @@
            (str "https://www.pathofexile.com/character-window/get-stash-items?accountName=" accountName "&tabIndex=" tabIndex "&league=" league "&tabs=0")
            {:cookies {"POESESSID" {:value POESESSID}}
             :accept  :json
-            :as      :json}
+            :as      :json
+            :socket-timeout 10000
+            :conn-timeout 10000
+            }
            )))
 
-(defn get-all-tabs [accountName POESESSID league]
+
+(defn get-characters [accountName POESESSID league]
+  (filter (fn [c] (= (:league c) league))
+          (:body (client/post "https://www.pathofexile.com/character-window/get-characters"
+                              {:cookies {"POESESSID" {:value POESESSID}}
+                               :form-params {:accountName accountName}
+                               :content-type :json
+                               :accept  :json
+                               :as      :json
+                               :socket-timeout 10000
+                               :conn-timeout 10000}
+                              ))))
+
+;(get-characters "LudoTheHUN" (POESESSID-fn) "Standard")
+
+(defn get-character-items [accountName POESESSID league character]
+  (:body (client/post "https://www.pathofexile.com/character-window/get-items"
+                      {:cookies {"POESESSID" {:value POESESSID}}
+                       :form-params {:accountName accountName :character character}
+                       :accept  :json
+                       :as      :json
+                       :socket-timeout 10000
+                       :conn-timeout 10000
+                       }
+                      )))
+
+;(get-character-items "LudoTheHUN" (POESESSID-fn) "Standard" "LudoTheBreach")
+
+
+(defn get-all-tabs-items [accountName POESESSID league]
   (let [number-of-tabs (:numTabs (get-tab-data accountName POESESSID league 0))
         all-tabs-data (map (fn [tab-number]
                              (conj {:tab-number tab-number}
@@ -21,6 +53,27 @@
                                      (concat xs (map #(conj % {:tab-number (:tab-number x)}) (:items x)))
                                      ) [] all-tabs-data)]
     flat-all-tabs-data))
+
+
+(defn get-all-characters-items [accountName POESESSID league]
+ ;TODO test!
+  (let [characters (map :name (get-characters accountName POESESSID league))
+        all-character-items (map (fn [character] (get-character-items accountName POESESSID league character))
+                                 characters)
+
+        flat-all-character-data (reduce
+                                  (fn [xs x]
+                                    (concat xs (map #(conj % {:characterName (:name (:character x))}) (:items x))))
+                                  [] all-character-items)]
+    flat-all-character-data))
+
+;(def all-char-items (get-all-characters-items "LudoTheHUN" (POESESSID-fn) "Standard"))
+
+
+(defn get-all-items-data [accountName POESESSID league]
+  (concat
+    (get-all-tabs-items accountName POESESSID league)
+    (get-all-characters-items accountName POESESSID league)))
 
 (defn item->kind  [item]
   (let [http-split (clojure.string/split (:icon item) #"/")]
@@ -176,7 +229,7 @@
   ;(def tab-data-0 (get-tab-data "LudoTheHUN" "" "Breach" 0))
   ;(def tab-data (get-tab-data "LudoTheHUN" "" "Breach" 9))
 
-  (def all-tabs-data (get-all-tabs
+  (def all-tabs-data (get-all-tabs-items
                        "LudoTheHUN"   ;;you account name
                        (POESESSID-fn)   ;;POESESSID, get it from your browser cookies , a 32 char string
                        "Standard"
