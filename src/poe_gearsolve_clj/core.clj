@@ -70,10 +70,13 @@
 ;(def all-char-items (get-all-characters-items "LudoTheHUN" (POESESSID-fn) "Standard"))
 
 
-(defn get-all-items-data [accountName POESESSID league]
+(defn get-all-items-data
+  "scrapes all of items!"
+  [accountName POESESSID league]
   (concat
     (get-all-tabs-items accountName POESESSID league)
     (get-all-characters-items accountName POESESSID league)))
+
 
 (defn item->kind  [item]
   (let [http-split (clojure.string/split (:icon item) #"/")]
@@ -218,7 +221,10 @@
               ]
           {:armout-set
            {:Amulet Amulet
-            :Ring1 Ring1 :Ring2 Ring2}}
+            :Ring1 Ring1
+            :Ring2 Ring2
+            ;;TODO !!!
+            }}
           )))
 
 
@@ -229,7 +235,7 @@
   ;(def tab-data-0 (get-tab-data "LudoTheHUN" "" "Breach" 0))
   ;(def tab-data (get-tab-data "LudoTheHUN" "" "Breach" 9))
 
-  (def all-tabs-data (get-all-tabs-items
+  (def all-tabs-data (get-all-items-data
                        "LudoTheHUN"   ;;you account name
                        (POESESSID-fn)   ;;POESESSID, get it from your browser cookies , a 32 char string
                        "Standard"
