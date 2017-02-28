@@ -5,7 +5,7 @@
 
 (defn get-tab-data [accountName POESESSID league tabIndex]
   (:body (client/get
-           (str "https://www.pathofexile.com/character-window/get-stash-items?accountName=" accountName "&tabIndex=" tabIndex "&league=Breach&tabs=0")
+           (str "https://www.pathofexile.com/character-window/get-stash-items?accountName=" accountName "&tabIndex=" tabIndex "&league=" league "&tabs=0")
            {:cookies {"POESESSID" {:value POESESSID}}
             :accept  :json
             :as      :json}
@@ -179,7 +179,7 @@
   (def all-tabs-data (get-all-tabs
                        "LudoTheHUN"   ;;you account name
                        (POESESSID-fn)   ;;POESESSID, get it from your browser cookies , a 32 char string
-                       "Breach"
+                       "Standard"
                        ))
 
   (filter-items-of-kind all-tabs-data :Belt)
