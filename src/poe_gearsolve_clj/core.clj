@@ -4,6 +4,7 @@
 (defn POESESSID-fn [] (read-string (slurp ".POESSID")))
 
 (defn get-tab-data [accountName POESESSID league tabIndex]
+  (Thread/sleep 500) ;;Prevent API spamming
   (:body (client/get
            (str "https://www.pathofexile.com/character-window/get-stash-items?accountName=" accountName "&tabIndex=" tabIndex "&league=" league "&tabs=0")
            {:cookies {"POESESSID" {:value POESESSID}}
@@ -30,6 +31,7 @@
 ;(get-characters "LudoTheHUN" (POESESSID-fn) "Standard")
 
 (defn get-character-items [accountName POESESSID league character]
+  (Thread/sleep 500) ;;Prevent API spamming
   (:body (client/post "https://www.pathofexile.com/character-window/get-items"
                       {:cookies {"POESESSID" {:value POESESSID}}
                        :form-params {:accountName accountName :character character}
@@ -50,7 +52,9 @@
                                    (get-tab-data accountName POESESSID league tab-number))) (range 1 number-of-tabs)
                            )
         flat-all-tabs-data (reduce (fn [xs x]
-                                     (concat xs (map #(conj % {:tab-number (:tab-number x)}) (:items x)))
+                                     (concat xs (map #(conj % {:tab-number (:tab-number x)
+                                                               :location (:tab-number x)
+                                                               :at :tab-number}) (:items x)))
                                      ) [] all-tabs-data)]
     flat-all-tabs-data))
 
@@ -63,7 +67,9 @@
 
         flat-all-character-data (reduce
                                   (fn [xs x]
-                                    (concat xs (map #(conj % {:characterName (:name (:character x))}) (:items x))))
+                                    (concat xs (map #(conj % {:characterName (:name (:character x))
+                                                              :location (:name (:character x))
+                                                              :at :characterName}) (:items x))))
                                   [] all-character-items)]
     flat-all-character-data))
 
@@ -159,28 +165,59 @@
                 (= (get-post-num-s a-mod) " to Evasion Rating")
                 :EvasionRating
 
+                (= (get-post-num-s a-mod) "% to Cold Resistance")
+                :ColdResist
+
+                (= (get-post-num-s a-mod) "% to Fire Resistance")
+                :FireResist
+
+                (= (get-post-num-s a-mod) "% to Lightning Resistance")
+                :LightningResist
+
+                (= (get-post-num-s a-mod) "% to Chaos Resistance")
+                :ChaosResist
+
                 ;;TODO need to differenciate between the total Energy Shield of item and it's mods
 
                 :else (get-post-num-s a-mod)
                 )
         mod-v ;(if (keyword? mod-k) [(first (get-numbers a-mod)) (second (get-numbers a-mod))]
-                [(first (get-numbers a-mod))
-                 (second (get-numbers a-mod))
-                 (get-pre-num-s a-mod)
-                 (get-post-num-s a-mod)
-                 ]
-               ;)
+        [(first (get-numbers a-mod))
+         (second (get-numbers a-mod))
+         (get-pre-num-s a-mod)
+         (get-post-num-s a-mod)
+         ]
+        ;)
         ]
     ;;TODO
     ;" to all Attributes"
     ;" to Strength and Dexterity"
     ;" to Dexterity and Intelligence"
     ;" to all Attributes"
+    ;"% to Fire and Lightning Resistances"
     ;and all those things....
-    {mod-k
-     mod-v
-     }
-    ))
+    (cond (= mod-k " to all Attributes")
+          {:Strength mod-v :Intelligence mod-v :Dexterity mod-v}
+
+          (= mod-k " to Strength and Dexterity")
+          {:Strength mod-v :Dexterity mod-v}
+
+          (= mod-k " to Dexterity and Intelligence")
+          {:Dexterity mod-v :Intelligence mod-v}
+
+          (= mod-k " to Strength and Intelligence")
+          {:Strength mod-v :Intelligence mod-v}
+
+
+
+          (= mod-k "% to all Elemental Resistances")
+          {:ColdResist mod-v :FireResist mod-v :LightningResist mod-v}
+
+          :else
+          {mod-k
+           mod-v
+           }
+          )))
 
 ;(mod-string->mod-kv "24% increased Stun Duration on Enemies")
 ;;  {:StunDurationPct 24}
@@ -195,7 +232,9 @@
     ;;TODO need to look at item kinds an either use the mods (for belts rings amulets) or item properties
 
     (reduce (fn [mod-map a-mod]
-             (conj mod-map (mod-string->mod-kv a-mod)) )
+             (conj mod-map (mod-string->mod-kv a-mod)
+                   ;;TODO need to sum values as we merge mod-maps
+                   ))
             {} all-mod-strings)
     ))
 
@@ -219,6 +258,7 @@
               Glove      (filter-items-of-kind all-tabs-data :Glove)
               Boot       (filter-items-of-kind all-tabs-data :Boot)
               ]
+          ;;TODO aggregate function that gives total values for all items
           {:armout-set
            {:Amulet Amulet
             :Ring1 Ring1
@@ -241,44 +281,72 @@
                        "Standard"
                        ))
 
-  (filter-items-of-kind all-tabs-data :Belt)
+  (count all-tabs-data)
+
+  (frequencies (map item->kind all-tabs-data))
+
+  (frequencies (map :location (filter-items-of-kind all-tabs-data :Gem)))
+
   (filter-items-of-kind all-tabs-data :Glove)
   (last (filter-items-of-kind all-tabs-data :Glove))
 
   (clojure.pprint/pprint
-    (map item->modsmap
-         (filter-items-of-kind all-tabs-data :Boot)))
+    (take 500
+          (map item->modsmap
+               (filter-items-of-kind all-tabs-data :Ring))))
+
+  ;;All mods
+  (clojure.pprint/pprint
+    (sort-by str
+             (map identity
+                  (frequencies
+                    (flatten
+                      (map keys
+                           (map item->modsmap
+                                ;(filter-items-of-kind all-tabs-data :Ring))))))))
+                                all-tabs-data)))))))
+
+  ;;Find item by mod-k
+  ;;Find items with a mod
+  (clojure.pprint/pprint
+    (filter (fn [mod-map-with-item] (contains? (set (keys mod-map-with-item)) "% increased Dexterity"))
+            (flatten
+              (map (fn [item] (conj (item->modsmap item) {:item item}))
+                   ;(filter-items-of-kind all-tabs-data :Ring))))))))
+                   all-tabs-data))
+            )
+    )
 
 
- (count (find-armout-sets all-tabs-data identity))
+  (count (find-armout-sets all-tabs-data identity))
 
 
-   (frequencies (filter armour-set-classes (map item->kind all-tabs-data)
-                 ))
-
-
-    (filter (fn [i] (= (item-classifier i) "Divination"))
-                   all-tabs-data)
-
-
-    (map :properties all-tabs-data)
-
-
-    (clojure.pprint/pprint (take 10  all-tabs-data))
-
-
-
-
-    (count all-tabs-data)
-
-    (keys tab-data)
-
-    (frequencies  (map :properties all-tabs-data
+  (frequencies (filter armour-set-classes (map item->kind all-tabs-data)
                        ))
 
-    ;; TODO unify item types
-    ;; TODO unify item stats
-    ;; TODO Encode constraints of a gear-set.
-    ;; TODO: constraint optimiser for minimal resistances and shield... points based gear-set search
 
-    )
+  (filter (fn [i] (= (item-classifier i) "Divination"))
+          all-tabs-data)
+
+
+  (map :properties all-tabs-data)
+
+
+  (clojure.pprint/pprint (take 10  all-tabs-data))
+
+
+
+
+  (count all-tabs-data)
+
+  (keys tab-data)
+
+  (frequencies  (map :properties all-tabs-data
+                     ))
+
+  ;; TODO unify item types
+  ;; TODO unify item stats
+  ;; TODO Encode constraints of a gear-set.
+  ;; TODO: constraint optimiser for minimal resistances and shield... points based gear-set search
+
+  )
