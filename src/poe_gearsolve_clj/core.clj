@@ -198,20 +198,21 @@
     ;and all those things....
     (cond (= mod-k " to all Attributes")
           {:Strength mod-v :Intelligence mod-v :Dexterity mod-v}
-
           (= mod-k " to Strength and Dexterity")
           {:Strength mod-v :Dexterity mod-v}
-
           (= mod-k " to Dexterity and Intelligence")
           {:Dexterity mod-v :Intelligence mod-v}
-
           (= mod-k " to Strength and Intelligence")
           {:Strength mod-v :Intelligence mod-v}
 
-
-
           (= mod-k "% to all Elemental Resistances")
           {:ColdResist mod-v :FireResist mod-v :LightningResist mod-v}
+          (= mod-k "% to Cold and Lightning Resistances")
+          {:ColdResist mod-v :LightningResist mod-v}
+          (= mod-k "% to Fire and Cold Resistances")
+          {:ColdResist mod-v :FireResist mod-v}
+          (= mod-k "% to Fire and Lightning Resistances")
+          {:FireResist mod-v :LightningResist mod-v}
 
           :else
           {mod-k
@@ -219,18 +220,54 @@
            }
           )))
 
-;(mod-string->mod-kv "24% increased Stun Duration on Enemies")
-;;  {:StunDurationPct 24}
+(defn property->prop-kv [property]
+  (let [property-key (cond (= "Evasion Rating" (:name property))
+                           :EvasionRating-prop
+                           (= "Armour" (:name property))
+                           :Armour-prop
+                           (= "Energy Shield" (:name property))
+                           :EnergyShield-prop
+                           (= "Quality" (:name property))
+                           :Quality
+                           :else
+                           (:name property)
+                           )
+        property-val (vec (concat
+                            (get-numbers (first (first (:values property))))
+                            ["" (:name property)]))]
 
+    {property-key property-val}))
+
+
+#_(sort-by (fn [z] ;(first (second z))
+             (first (second (first (vec z))))
+             )
+           (flatten (map
+                      (fn [i] (map property->prop-kv (:properties i)))
+                      (filter-items-of-kind all-tabs-data :BodyArmour))))
+
+;(100 base armour + 50 armour) * (1 + 1/100*(100% increased armour + 20% quality)) = 150 * 2.2 = 330 armour
+(/
+  (* (+ 100.0 50) (+ 1 (* 1/100 (+ 100 20))))
+  (* (+ 100.0 50) (+ 1 (* 1/100 (+ 100 0))))
+  )
+
+(/
+  (* (+ 100.0 50) (+ 1 (* 1/100 (+ 0 20))))
+  (* (+ 100.0 50) (+ 1 (* 1/100 (+ 0 0))))
+  )
+
+(- (/ 330.0 (+ 1 (* 1/100 (+ 100 20)))) 50)
+(- (/ 300.0 (+ 1 (* 1/100 (+ 100 0)))) 50)
+;;;TODO reverse compute base property, then compute forward the maximum property under maximum (20) quality .
+  ;... will need to bring properties and mod together, could be nice way to capture belts not having properties (zero base value)
 
 (defn item->modsmap  [item]
   (let [all-mod-strings (concat
                           (:implicitMods item)
                           (:explicitMods item))
         ]
-
     ;;TODO need to look at item kinds an either use the mods (for belts rings amulets) or item properties
-
     (reduce (fn [mod-map a-mod]
              (conj mod-map (mod-string->mod-kv a-mod)
                    ;;TODO need to sum values as we merge mod-maps
