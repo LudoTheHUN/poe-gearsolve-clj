@@ -243,15 +243,28 @@
 (defn item->modsmap  [item]
   (let [all-mod-strings (concat
                           (:implicitMods item)
-                          (:explicitMods item))
-        ]
+                          (:explicitMods item))]
     ;;TODO need to look at item kinds an either use the mods (for belts rings amulets) or item properties... NO
-       ;; Actually, jewlery simply don't have properties (model them as zero value)... We use the qulity  formulay to compute out the result
+    ;; Actually, jewlery simply don't have properties (model them as zero value)... We use the qulity  formulay to compute out the result
     (reduce (fn [mod-map a-mod]
-             (conj mod-map (mod-string->mod-kv a-mod)
-                   ;;TODO WIP HERE!
-                   ;;TODO need to sum values as we merge mod-maps
-                   ))
+              ;(conj mod-map (mod-string->mod-kv a-mod)
+              (println mod-map a-mod)
+
+              (merge-with (fn [mod-v1 mod-v2]
+                            (let [[mod-v1-n1 mod-v1-n2 mod-v1-s1 mod-v1-s2] mod-v1
+                                  [mod-v2-n1 mod-v2-n2 mod-v2-s1 mod-v2-s2] mod-v2]
+                              [(if (and mod-v1-n1 mod-v2-n1)
+                                 (+ mod-v1-n1 mod-v2-n1))
+                               (if (and mod-v1-n2 mod-v2-n2)
+                                 (+ mod-v1-n1 mod-v2-n1))
+                               (clojure.set/intersection mod-v1-s1 mod-v2-s1)
+                               (clojure.set/intersection mod-v1-s2 mod-v2-s2)]))
+                          mod-map (mod-string->mod-kv a-mod))
+
+              ;;ERROR HERE
+              ;;TODO WIP HERE!
+              ;;TODO need to sum values as we merge mod-maps
+              )
             {} all-mod-strings)
     ))
 
