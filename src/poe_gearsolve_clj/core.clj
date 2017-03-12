@@ -232,19 +232,24 @@
                            :else
                            (:name property)
                            )
-        property-val (vec (concat
-                            (get-numbers (first (first (:values property))))
-                            ["" (:name property)]))]
+        prop-value (first (first (:values property)))
+        property-val (if prop-value
+                       (vec (concat
+                              (get-numbers prop-value)
+                              ["" (:name property)]))
+                       [nil nil "" (:name property)])]
 
     {property-key property-val}))
 
+
+#_(filter-items-of-kind all-tabs-data :BodyArmour)
 
 #_(sort-by (fn [z] ;(first (second z))
              (first (second (first (vec z))))
              )
            (flatten (map
                       (fn [i] (map property->prop-kv (:properties i)))
-                      (filter-items-of-kind all-tabs-data :BodyArmour))))
+                      (filter-items-of-kind all-tabs-data :Belt))))
 
 ;(100 base armour + 50 armour) * (1 + 1/100*(100% increased armour + 20% quality)) = 150 * 2.2 = 330 armour
 (/
