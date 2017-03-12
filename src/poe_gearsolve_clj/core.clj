@@ -119,22 +119,28 @@
 
 
 (defn get-numbers [s]
-  (let [matcher (re-matcher #"[-]?[0-9]*[\.]?[0-9]" s)
+  (let [matcher (re-matcher #"[-]?[0-9]*[\.]?[0-9]?[0-9]" s)
         to-float (fn [s-num] (try (Float. s-num) (catch Exception e nil)))
         ]
     [(to-float (re-find matcher))
      (to-float (re-find matcher))
      ]))
 
-#_(get-numbers "Adds d-4.8% to -8.1 Fire Damage to Attacks")
-#_(get-numbers "Adds Fire Damage to Attacks")
-
+(comment
+  (get-numbers "Adds d-4.% to -8.1 Fire Damage to Attacks")
+  (get-numbers "Adds d-4% to -8.1 Fire Damage to Attacks")
+  (get-numbers "Adds d-4.8% to -8.1 Fire Damage to Attacks")
+  (get-numbers "Adds Fire Damage to Attacks")
+  (get-numbers "Adds d-4.81% to -8.10 Fire Damage to Attacks")
+  (get-numbers "Adds d-4.81% to -8.15 Fire Damage to Attacks")
+  )
 
 (defn get-post-num-s [s]
   (re-find #"[^0-9]+$" s))
 
 #_(get-post-num-s "Adds d-4.8% to 8.1 Fire Damage to Attacks")
 #_(get-post-num-s "Adds d- Fire Damage to Attacks")
+#_(get-post-num-s "Adds d-4.8% to 8.10 Fire Damage to Attacks")
 
 
 (defn get-pre-num-s [s]
@@ -159,18 +165,23 @@
                 :Dexterity
 
                 (= (get-post-num-s a-mod) " to Armour")
-                :Armour
+                :Armour-mod-add
                 (= (get-post-num-s a-mod) " to maximum Energy Shield")
-                :EnergyShield
+                :EnergyShield-mod-add
                 (= (get-post-num-s a-mod) " to Evasion Rating")
-                :EvasionRating
+                :EvasionRating-mod-add
+
+                (= (get-post-num-s a-mod) "% increased Armour")
+                :Armour-mod-pct-increase
+                (= (get-post-num-s a-mod) "% increased Energy Shield")
+                :EnergyShield-mod-pct-increase
+                (= (get-post-num-s a-mod) "% increased Evasion Rating")
+                :EvasionRating-mod-pct-increase
 
                 (= (get-post-num-s a-mod) "% to Cold Resistance")
                 :ColdResist
-
                 (= (get-post-num-s a-mod) "% to Fire Resistance")
                 :FireResist
-
                 (= (get-post-num-s a-mod) "% to Lightning Resistance")
                 :LightningResist
 
@@ -214,11 +225,41 @@
           (= mod-k "% to Fire and Lightning Resistances")
           {:FireResist mod-v :LightningResist mod-v}
 
+          (= mod-k "% increased Armour and Evasion")
+          {:Armour-mod-pct-increase mod-v :EvasionRating-mod-pct-increase mod-v}
+          (= mod-k "% increased Evasion and Energy Shield")
+          {:EvasionRating-mod-pct-increase mod-v :EnergyShield-mod-pct-increase mod-v}
+          (= mod-k "% increased Armour and Energy Shield")
+          {:Armour-mod-pct-increase mod-v :EnergyShield-mod-pct-increase mod-v}
+
+
+
           :else
           {mod-k
            mod-v
            }
           )))
+
+(defn item->modsmap  [item]
+  (let [all-mod-strings (concat
+                          (:implicitMods item)
+                          (:explicitMods item))
+        ]
+    ;;TODO need to look at item kinds an either use the mods (for belts rings amulets) or item properties... NO
+       ;; Actually, jewlery simply don't have properties (model them as zero value)... We use the qulity  formulay to compute out the result
+    (reduce (fn [mod-map a-mod]
+             (conj mod-map (mod-string->mod-kv a-mod)
+                   ;;TODO WIP HERE!
+                   ;;TODO need to sum values as we merge mod-maps
+                   ))
+            {} all-mod-strings)
+    ))
+
+(comment
+  (item->modsmap (nth (filter-items-of-kind all-tabs-data :Glove) 2))
+  (item->modsmap (nth (filter-items-of-kind all-tabs-data :Glove) 0))
+  (item->modsmap (nth (filter-items-of-kind all-tabs-data :BodyArmour) 0))
+  )
 
 (defn property->prop-kv [property]
   (let [property-key (cond (= "Evasion Rating" (:name property))
@@ -242,15 +283,27 @@
     {property-key property-val}))
 
 
-#_(filter-items-of-kind all-tabs-data :BodyArmour)
-
 #_(sort-by (fn [z] ;(first (second z))
-             (first (second (first (vec z))))
-             )
+             (first (second (first (vec z)))))
            (flatten (map
                       (fn [i] (map property->prop-kv (:properties i)))
-                      (filter-items-of-kind all-tabs-data :Belt))))
+                      (filter-items-of-kind all-tabs-data :Helmet))))
 
+(defn item->propmap [item]
+  (reduce conj {}
+          (map property->prop-kv (:properties item)))
+
+  )
+
+
+
+(comment
+  (item->modsmap (first (filter-items-of-kind all-tabs-data :Boot)))
+  (item->propmap (first (filter-items-of-kind all-tabs-data :Boot)))
+  (item->propmap (first (filter-items-of-kind all-tabs-data :TwoHandedWeapon)))
+  )
+
+;; http://pathofexile.gamepedia.com/Quality
 ;(100 base armour + 50 armour) * (1 + 1/100*(100% increased armour + 20% quality)) = 150 * 2.2 = 330 armour
 (/
   (* (+ 100.0 50) (+ 1 (* 1/100 (+ 100 20))))
@@ -267,18 +320,6 @@
 ;;;TODO reverse compute base property, then compute forward the maximum property under maximum (20) quality .
   ;... will need to bring properties and mod together, could be nice way to capture belts not having properties (zero base value)
 
-(defn item->modsmap  [item]
-  (let [all-mod-strings (concat
-                          (:implicitMods item)
-                          (:explicitMods item))
-        ]
-    ;;TODO need to look at item kinds an either use the mods (for belts rings amulets) or item properties
-    (reduce (fn [mod-map a-mod]
-             (conj mod-map (mod-string->mod-kv a-mod)
-                   ;;TODO need to sum values as we merge mod-maps
-                   ))
-            {} all-mod-strings)
-    ))
 
 ;;Need another function for properties
 
@@ -351,13 +392,20 @@
   ;;Find item by mod-k
   ;;Find items with a mod
   (clojure.pprint/pprint
-    (filter (fn [mod-map-with-item] (contains? (set (keys mod-map-with-item)) "% increased Dexterity"))
+    (filter (fn [mod-map-with-item] (contains? (set (keys mod-map-with-item)) "% more Armour"))
             (flatten
               (map (fn [item] (conj (item->modsmap item) {:item item}))
                    ;(filter-items-of-kind all-tabs-data :Ring))))))))
-                   all-tabs-data))
-            )
-    )
+                   all-tabs-data))))
+
+  ;;Mods with something in their nama
+  (clojure.pprint/pprint
+    (map first
+         (filter (fn [[k v]] (re-find #"Attack " (str k)))
+                 (reduce conj {}
+                         (map item->modsmap
+                              ;(filter-items-of-kind all-tabs-data :Ring))))))))
+                              all-tabs-data)))))
 
 
   (count (find-armout-sets all-tabs-data identity))
