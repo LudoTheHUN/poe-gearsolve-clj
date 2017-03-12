@@ -195,8 +195,8 @@
         mod-v ;(if (keyword? mod-k) [(first (get-numbers a-mod)) (second (get-numbers a-mod))]
         [(first (get-numbers a-mod))
          (second (get-numbers a-mod))
-         (get-pre-num-s a-mod)
-         (get-post-num-s a-mod)
+         #{(get-pre-num-s a-mod)}
+         #{(get-post-num-s a-mod)}
          ]
         ;)
         ]
@@ -277,8 +277,8 @@
         property-val (if prop-value
                        (vec (concat
                               (get-numbers prop-value)
-                              ["" (:name property)]))
-                       [nil nil "" (:name property)])]
+                              [#{""} #{(:name property)}]))
+                       [nil nil #{""} #{(:name property)}])]
 
     {property-key property-val}))
 
